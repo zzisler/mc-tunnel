@@ -65,6 +65,7 @@ type App struct {
 	// Persistence: where the configuration lives, how secrets are encrypted and
 	// what was restored at startup.
 	settingsPath string
+	settingsNote string
 	protector    settings.Protector
 	initial      settings.Settings
 

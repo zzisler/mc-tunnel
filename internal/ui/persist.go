@@ -84,13 +84,19 @@ func (a *App) loadSettings() {
 	}
 	a.settingsPath = path
 
-	// Tell the user when the file is not where they would expect it, so a
-	// config.json sitting next to the exe is not a mystery.
+	// When the file is not where the user would expect it, the reason travels
+	// with every "saved to" line: a config.json next to the exe must not be a
+	// mystery a scroll to the top of the log would explain.
+	a.settingsNote = ""
 	if preferred, err := os.UserConfigDir(); err == nil {
 		usual := filepath.Join(preferred, "mctunnel", "config.json")
-		if filepath.Clean(path) != filepath.Clean(usual) &&
-			os.Getenv(settings.ConfigPathEnv) == "" {
-			a.log.Infof("the roaming profile is not writable, settings go to %s", path)
+		if filepath.Clean(path) != filepath.Clean(usual) {
+			if os.Getenv(settings.ConfigPathEnv) != "" {
+				a.settingsNote = " (path from " + settings.ConfigPathEnv + ")"
+			} else {
+				a.settingsNote = " (the roaming profile is not writable)"
+			}
+			a.log.Infof("settings live in %s%s", path, a.settingsNote)
 		}
 	}
 
@@ -126,6 +132,6 @@ func (a *App) saveSettings(quiet bool) {
 		return
 	}
 	if !quiet {
-		a.log.Infof("settings saved to %s", a.settingsPath)
+		a.log.Infof("settings saved to %s%s", a.settingsPath, a.settingsNote)
 	}
 }

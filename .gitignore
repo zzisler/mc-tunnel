@@ -11,6 +11,12 @@
 tmp-*
 commit-msg.txt
 
+# A real configuration. When the roaming profile is not writable the app falls
+# back to this folder, and that file holds a saved proxy password — never commit
+# it. Use config.example.json for a documented sample.
+config.json
+config.json.bak
+
 # Windows noise
 Thumbs.db
 Desktop.ini
