@@ -74,6 +74,9 @@ func wndProc(hwnd syscall.Handle, message uint32, wp, lp uintptr) uintptr {
 		return 0
 	case wmClose:
 		if a != nil {
+			// Save before the window goes away, but quietly: the user is leaving
+			// and there is no panel left to read a warning from.
+			a.saveSettings(true)
 			a.log.SetHook(nil)
 			a.manager.Stop()
 		}
@@ -105,10 +108,12 @@ func Run() {
 
 	logger := applog.New(4000)
 	a := &App{
-		log:     logger,
-		manager: tunnel.New(logger),
+		log:       logger,
+		manager:   tunnel.New(logger),
+		protector: dpapiProtector{},
 	}
 	application = a
+	a.loadSettings()
 
 	if err := a.create(); err != nil {
 		messageBox(0, err.Error())
@@ -163,6 +168,7 @@ func (a *App) create() error {
 	}
 	a.hwnd = syscall.Handle(r)
 	a.createControls()
+	a.applySettings(a.initial)
 	showWindow(a.hwnd, true)
 	procUpdateWindow.Call(uintptr(a.hwnd))
 	setTimer(a.hwnd, timerID, refreshMillis)
@@ -193,6 +199,8 @@ func (a *App) onStart() {
 	}
 	a.updateButtons()
 	a.log.Infof("connect Minecraft to %s", strings.Join(addrs, " or "))
+	// The form is known good at this point, so it is safe to remember.
+	a.saveSettings(false)
 }
 
 // onStop tears the tunnel down, including live sessions.
@@ -268,8 +276,8 @@ type formValues struct {
 	Port   string
 }
 
-// settings is a validated form, ready to be handed to the tunnel manager.
-type settings struct {
+// resolved is a validated form, ready to be handed to the tunnel manager.
+type resolved struct {
 	target string
 	port   int
 	dialer proxy.Dialer
@@ -299,21 +307,22 @@ func (a *App) applyProxyNotes(kind proxy.Kind, notes []string) {
 }
 
 // applyNotes syncs the UI with what the parser decided and logs it.
-func (a *App) applyNotes(s settings) {
+func (a *App) applyNotes(s resolved) {
 	a.applyProxyNotes(s.kind, s.notes)
 	a.log.Infof("using proxy %s", s.dialer.Describe())
 }
 
-// resolveProxy parses the proxy line and builds a dialer for it. It reports the
-// kind the line forced and any notes worth showing the user.
-func resolveProxy(in formValues) (proxy.Dialer, proxy.Kind, []string, error) {
+// proxyConfig parses the proxy line and settles the protocol: a scheme in the
+// line wins, otherwise the radio buttons decide. It reports the kind the line
+// forced and any notes worth showing the user.
+func proxyConfig(in formValues) (proxy.Config, proxy.Kind, []string, error) {
 	cfg, err := proxy.Parse(in.Proxy)
 	if err != nil {
-		return nil, "", nil, err
+		return proxy.Config{}, "", nil, err
 	}
 	selected, err := proxy.ParseKind(in.Kind)
 	if err != nil {
-		return nil, "", nil, err
+		return proxy.Config{}, "", nil, err
 	}
 	var kind proxy.Kind
 	var notes []string
@@ -327,6 +336,15 @@ func resolveProxy(in formValues) (proxy.Dialer, proxy.Kind, []string, error) {
 		notes = append(notes,
 			fmt.Sprintf("proxy type taken from the line: %s (radio button updated)", cfg.Kind))
 	}
+	return cfg, kind, notes, nil
+}
+
+// resolveProxy builds a dialer from the form.
+func resolveProxy(in formValues) (proxy.Dialer, proxy.Kind, []string, error) {
+	cfg, kind, notes, err := proxyConfig(in)
+	if err != nil {
+		return nil, "", nil, err
+	}
 	dialer, err := proxy.New(cfg)
 	if err != nil {
 		return nil, "", nil, err
@@ -336,8 +354,8 @@ func resolveProxy(in formValues) (proxy.Dialer, proxy.Kind, []string, error) {
 
 // resolveForm turns the typed text into a tunnel configuration. It holds the
 // whole validation story of the form, which keeps it testable without a window.
-func resolveForm(in formValues) (settings, error) {
-	var out settings
+func resolveForm(in formValues) (resolved, error) {
+	var out resolved
 
 	target, err := addr.Normalize(in.Server, defaultPort)
 	if err != nil {
