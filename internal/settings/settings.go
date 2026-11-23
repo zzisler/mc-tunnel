@@ -9,6 +9,14 @@
 //     is written;
 //   - saving is atomic, so a crash or a full disk cannot leave a half written
 //     config behind.
+//
+// TODO(long-term): a custom binary format (.mct) was considered and deliberately
+// deferred. JSON is inspectable, tolerates added fields and fails loudly; a hand
+// written codec would add a length-prefixed parser with its own bounds checks,
+// its own migration story and silent breakage, for a file of roughly 250 bytes
+// that is read once per start. Revisit only if the file grows into something
+// JSON handles badly (large history, binary payloads) or if it must be sealed as
+// a whole. See "Планы" in README.md.
 package settings
 
 import (
