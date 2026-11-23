@@ -137,8 +137,8 @@ ASSOCIATE (HTTP CONNECT датаграммы не переносит), это о
 
 ## Сборка и тесты
 
-```
-.\build.ps1
+```cmd
+build.cmd
 ```
 
 Скрипт прогоняет `go vet`, тесты и собирает exe с флагом `-H=windowsgui`.
@@ -146,7 +146,15 @@ ASSOCIATE (HTTP CONNECT датаграммы не переносит), это о
 приложения открывается пустая чёрная консоль. Вся диагностика идёт в панель
 логов, консоль не нужна.
 
-Вручную то же самое:
+То же самое делает `build.ps1`, но `build.cmd` надёжнее: политика выполнения
+PowerShell по умолчанию блокирует неподписанные `.ps1`, а `.cmd` — нет.
+Если хочешь пользоваться `.ps1`, разреши один раз:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Вручную:
 
 ```
 go build -trimpath -ldflags "-s -w -H=windowsgui" -o MC-Tunnel.exe ./cmd/mctunnel
