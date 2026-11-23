@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"mctunnel/internal/applog"
+	"mctunnel/internal/settings"
 	"mctunnel/internal/tunnel"
 )
 
@@ -60,6 +61,12 @@ type App struct {
 
 	log     *applog.Logger
 	manager *tunnel.Manager
+
+	// Persistence: where the configuration lives, how secrets are encrypted and
+	// what was restored at startup.
+	settingsPath string
+	protector    settings.Protector
+	initial      settings.Settings
 
 	logsVisible bool
 	logCursor   int

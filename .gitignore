@@ -1,11 +1,14 @@
 # Build output. Rebuild with .\build.ps1 — the source is the truth, not the exe.
-MC-Tunnel.exe
-MC-Tunnel.exe~
+# Versioned copies such as MC-Tunnel-0.1.0.exe are covered too.
+*.exe
 *.exe~
 
 # Local Go caches (created when the build runs in a sandboxed shell).
 .gocache/
 .gopath/
+
+# Scratch files from manual checks.
+tmp-*
 
 # Windows noise
 Thumbs.db
