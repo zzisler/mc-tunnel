@@ -1,11 +1,21 @@
 # Build output. Rebuild with .\build.ps1 — the source is the truth, not the exe.
-MC-Tunnel.exe
-MC-Tunnel.exe~
+# Versioned copies such as MC-Tunnel-0.1.0.exe are covered too.
+*.exe
 *.exe~
 
 # Local Go caches (created when the build runs in a sandboxed shell).
 .gocache/
 .gopath/
+
+# Scratch files from manual checks and release tooling.
+tmp-*
+commit-msg.txt
+
+# A real configuration. When the roaming profile is not writable the app falls
+# back to this folder, and that file holds a saved proxy password — never commit
+# it. Use config.example.json for a documented sample.
+config.json
+config.json.bak
 
 # Windows noise
 Thumbs.db
