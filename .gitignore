@@ -1,0 +1,12 @@
+# Build output. Rebuild with .\build.ps1 — the source is the truth, not the exe.
+MC-Tunnel.exe
+MC-Tunnel.exe~
+*.exe~
+
+# Local Go caches (created when the build runs in a sandboxed shell).
+.gocache/
+.gopath/
+
+# Windows noise
+Thumbs.db
+Desktop.ini

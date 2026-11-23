@@ -1,0 +1,15 @@
+# Keep the working tree in LF even with core.autocrlf=true on Windows.
+#
+# Go source must stay byte-identical to what gofmt produces, otherwise every
+# checkout shows phantom diffs in files nobody edited.
+* text=auto eol=lf
+
+# PowerShell handles LF fine, but CRLF is the native convention on Windows and
+# some editors still get confused by lone LF scripts.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Build output and binaries are never text.
+*.exe binary
+*.png binary
