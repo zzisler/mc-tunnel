@@ -7,8 +7,9 @@
 .gocache/
 .gopath/
 
-# Scratch files from manual checks.
+# Scratch files from manual checks and release tooling.
 tmp-*
+commit-msg.txt
 
 # Windows noise
 Thumbs.db

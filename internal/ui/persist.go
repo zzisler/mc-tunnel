@@ -3,6 +3,8 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -71,12 +73,26 @@ func (a *App) applySettings(s settings.Settings) {
 // loadSettings reads the stored configuration, keeping an unreadable file as a
 // .bak instead of silently overwriting it later.
 func (a *App) loadSettings() {
-	path, err := settings.DefaultPath()
-	if err != nil {
-		a.log.Warnf("settings: %v", err)
+	path, pathErr := settings.ResolvePath()
+	if path == "" {
+		a.log.Warnf("settings are disabled: %v", pathErr)
 		return
 	}
+	if pathErr != nil {
+		// The path is still usable information: say where saving will fail.
+		a.log.Warnf("settings: %v", pathErr)
+	}
 	a.settingsPath = path
+
+	// Tell the user when the file is not where they would expect it, so a
+	// config.json sitting next to the exe is not a mystery.
+	if preferred, err := os.UserConfigDir(); err == nil {
+		usual := filepath.Join(preferred, "mctunnel", "config.json")
+		if filepath.Clean(path) != filepath.Clean(usual) &&
+			os.Getenv(settings.ConfigPathEnv) == "" {
+			a.log.Infof("the roaming profile is not writable, settings go to %s", path)
+		}
+	}
 
 	stored, err := settings.Load(path, a.protector)
 	if err != nil {

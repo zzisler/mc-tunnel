@@ -69,17 +69,70 @@ func Default() Settings {
 // temporary directory.
 const ConfigPathEnv = "MCTUNNEL_CONFIG"
 
-// DefaultPath is %APPDATA%\mctunnel\config.json on Windows, unless
-// MCTUNNEL_CONFIG points somewhere else.
-func DefaultPath() (string, error) {
+// ResolvePath decides where the configuration lives.
+//
+// MCTUNNEL_CONFIG wins outright: an explicit request is never silently
+// redirected, it is reported instead. Without it the first writable candidate
+// wins: the roaming profile, then the folder next to the executable (portable
+// installs, locked-down profiles), then the temp directory. The returned path is
+// usable even when err is set, so the caller can still show where it tried.
+func ResolvePath() (string, error) {
 	if custom := strings.TrimSpace(os.Getenv(ConfigPathEnv)); custom != "" {
+		if err := ensureWritable(filepath.Dir(custom)); err != nil {
+			return custom, fmt.Errorf("%s points to %s: %w", ConfigPathEnv, custom, err)
+		}
 		return custom, nil
 	}
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("cannot find the user configuration directory: %w", err)
+	return resolveFrom(candidates())
+}
+
+// resolveFrom returns the first path whose directory can be created and written
+// to, and reports why every candidate failed when none can.
+func resolveFrom(paths []string) (string, error) {
+	var problems []string
+	for _, path := range paths {
+		if err := ensureWritable(filepath.Dir(path)); err != nil {
+			problems = append(problems, err.Error())
+			continue
+		}
+		return path, nil
 	}
-	return filepath.Join(dir, "mctunnel", "config.json"), nil
+	first := ""
+	if len(paths) > 0 {
+		first = paths[0]
+	}
+	return first, fmt.Errorf("no writable location for the configuration (%s)",
+		strings.Join(problems, "; "))
+}
+
+// candidates lists the places the configuration may live, in order of
+// preference.
+func candidates() []string {
+	var out []string
+	if dir, err := os.UserConfigDir(); err == nil {
+		out = append(out, filepath.Join(dir, "mctunnel", "config.json"))
+	}
+	if exe, err := os.Executable(); err == nil {
+		out = append(out, filepath.Join(filepath.Dir(exe), "config.json"))
+	}
+	out = append(out, filepath.Join(os.TempDir(), "mctunnel", "config.json"))
+	return out
+}
+
+// ensureWritable creates dir if needed and proves it is writable, which is the
+// only reliable check on Windows: the ACL can deny what the path suggests.
+func ensureWritable(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	probe, err := os.CreateTemp(dir, ".probe-*")
+	if err != nil {
+		return err
+	}
+	name := probe.Name()
+	probe.Close()
+	os.Remove(name)
+	return nil
 }
 
 // file is the on-disk representation. The password only ever appears as

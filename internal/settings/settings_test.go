@@ -203,24 +203,96 @@ func TestPortOutOfRangeFallsBackToDefault(t *testing.T) {
 	}
 }
 
-func TestDefaultPathHonoursOverride(t *testing.T) {
-	want := filepath.Join(t.TempDir(), "portable.json")
+func TestResolvePathHonoursOverride(t *testing.T) {
+	want := filepath.Join(t.TempDir(), "portable", "config.json")
 	t.Setenv(ConfigPathEnv, want)
-	got, err := DefaultPath()
+	got, err := ResolvePath()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got != want {
-		t.Fatalf("DefaultPath() = %q, want %q", got, want)
+		t.Fatalf("ResolvePath() = %q, want %q", got, want)
 	}
+	if _, err := os.Stat(filepath.Dir(got)); err != nil {
+		t.Fatalf("the directory was not created: %v", err)
+	}
+}
 
-	t.Setenv(ConfigPathEnv, "  ")
-	fallback, err := DefaultPath()
-	if err != nil {
+// An explicit request is never redirected: it is reported, so a typo in the
+// variable does not silently move the config somewhere unexpected.
+func TestResolvePathReportsUnusableOverride(t *testing.T) {
+	blocked := filepath.Join(t.TempDir(), "a-file")
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if fallback == want || !strings.HasSuffix(fallback, filepath.Join("mctunnel", "config.json")) {
-		t.Fatalf("blank override should fall back to the user config dir, got %q", fallback)
+	custom := filepath.Join(blocked, "config.json")
+	t.Setenv(ConfigPathEnv, custom)
+
+	got, err := ResolvePath()
+	if err == nil {
+		t.Fatal("expected an error for an unusable override")
+	}
+	if got != custom {
+		t.Fatalf("path = %q, want the requested %q", got, custom)
+	}
+	if !strings.Contains(err.Error(), ConfigPathEnv) {
+		t.Fatalf("the error should name the variable: %v", err)
+	}
+}
+
+func TestResolveFromSkipsUnwritableCandidates(t *testing.T) {
+	dir := t.TempDir()
+	blocked := filepath.Join(dir, "blocked")
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	wanted := filepath.Join(dir, "good", "config.json")
+
+	got, err := resolveFrom([]string{
+		filepath.Join(blocked, "config.json"), // a file sits where a directory is needed
+		wanted,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != wanted {
+		t.Fatalf("path = %q, want %q", got, wanted)
+	}
+}
+
+func TestResolveFromFailsWhenNothingIsWritable(t *testing.T) {
+	dir := t.TempDir()
+	blocked := filepath.Join(dir, "blocked")
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	first := filepath.Join(blocked, "config.json")
+	second := filepath.Join(blocked, "other", "config.json")
+
+	got, err := resolveFrom([]string{first, second})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if got != first {
+		t.Fatalf("path = %q, want the first candidate %q", got, first)
+	}
+	if !strings.Contains(err.Error(), "no writable location") {
+		t.Fatalf("unhelpful error: %v", err)
+	}
+}
+
+func TestCandidatesAreOrdered(t *testing.T) {
+	got := candidates()
+	if len(got) < 2 {
+		t.Fatalf("expected several candidates, got %v", got)
+	}
+	for _, path := range got {
+		if filepath.Base(path) != "config.json" {
+			t.Errorf("candidate %q does not end in config.json", path)
+		}
+	}
+	if !strings.Contains(got[0], "mctunnel") {
+		t.Errorf("the roaming profile must come first, got %q", got[0])
 	}
 }
 
