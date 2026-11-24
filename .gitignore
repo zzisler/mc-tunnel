@@ -3,6 +3,15 @@
 *.exe
 *.exe~
 
+# Wails puts the linked binary here.
+build/bin/
+
+# Stopgap module files: go.mod in this working copy could not be edited from the
+# agent shell, so Wails builds ran with -modfile=wails.mod. Delete them once the
+# Wails requirement lives in go.mod itself.
+wails.mod
+wails.sum
+
 # Local Go caches (created when the build runs in a sandboxed shell).
 .gocache/
 .gopath/
