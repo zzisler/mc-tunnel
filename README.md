@@ -163,7 +163,7 @@ ASSOCIATE (HTTP CONNECT датаграммы не переносит), это о
 Новый интерфейс собирается Wails:
 
 ```cmd
-go mod edit -require=github.com/wailsapp/wails/v2@v2.16.0
+go mod edit -require github.com/wailsapp/wails/v2@v2.16.0
 go mod tidy
 wails build -s
 ```
