@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0b15" />
+  <title>MC Tunnel</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-window" aria-label="MC Tunnel">
+    <header class="titlebar">
+      <div class="window-brand">
+        <span class="brand-cube" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="M16 2.7 28.1 9.4v13.2L16 29.3 3.9 22.6V9.4L16 2.7Z" fill="#7860E9"/>
+            <path d="M16 2.7 28.1 9.4 16 16.2 3.9 9.4 16 2.7Z" fill="#A18BFF"/>
+            <path d="M3.9 9.4 16 16.2v13.1L3.9 22.6V9.4Z" fill="#5740C5"/>
+            <path d="M28.1 9.4 16 16.2v13.1l12.1-6.7V9.4Z" fill="#38288D"/>
+            <path d="M16 2.7v13.5" stroke="#C7BCFF" stroke-opacity=".55"/>
+          </svg>
+        </span>
+        <span>MC Tunnel</span>
+      </div>
+      <div class="window-controls">
+        <button class="window-control minimize" type="button" id="minimizeBtn" aria-label="Свернуть"><span></span></button>
+        <button class="window-control close" type="button" id="closeBtn" aria-label="Закрыть"><span></span></button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <section class="settings" aria-label="Настройки подключения">
+        <div class="field-group">
+          <label class="field-label" for="server">
+            <svg class="label-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="6" rx="2"/><rect x="4" y="14.5" width="16" height="6" rx="2"/><path d="M8 6.5h.01M8 17.5h.01M12 6.5h4M12 17.5h4"/></svg>
+            <span>Minecraft сервер <span class="label-hint">(host:port)</span></span>
+          </label>
+          <div class="input-wrap">
+            <input id="server" type="text" value="" placeholder="play.example.com:25565" spellcheck="false" autocomplete="off" />
+            <button class="inline-icon-button" type="button" id="copyServer" aria-label="Скопировать адрес" title="Скопировать">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="proxy">
+            <svg class="label-icon chain-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.7 14.3 4.6-4.6M7.2 15.7l-1.1 1.1a3.6 3.6 0 0 1-5.1-5.1l4-4a3.6 3.6 0 0 1 5.1 0M16.8 8.3l1.1-1.1a3.6 3.6 0 0 1 5.1 5.1l-4 4a3.6 3.6 0 0 1-5.1 0"/></svg>
+            <span>Прокси <span class="label-hint">(socks5://user:pass@host:port или host:port)</span></span>
+          </label>
+          <div class="input-wrap">
+            <input id="proxy" type="text" value="" placeholder="socks5://user:pass@host:port" spellcheck="false" autocomplete="off" />
+            <button class="inline-icon-button" type="button" id="copyProxy" aria-label="Скопировать прокси" title="Скопировать">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <fieldset class="proxy-type">
+          <legend class="field-label">
+            <svg class="label-icon gear-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"/><path d="m19.4 13.5 1.1.9-1.5 2.6-1.4-.5a7.9 7.9 0 0 1-1.5.9l-.2 1.5h-3l-.3-1.5a7.9 7.9 0 0 1-1.6-.7l-1.3.6-1.6-2.5 1.1-1a7.4 7.4 0 0 1-.1-1.8l-1.1-.9 1.5-2.6 1.4.5a7.9 7.9 0 0 1 1.5-.9l.2-1.5h3l.3 1.5a7.9 7.9 0 0 1 1.6.7l1.3-.6 1.6 2.5-1.1 1a7.4 7.4 0 0 1 .1 1.8Z"/></svg>
+            <span>Тип прокси</span>
+          </legend>
+          <div class="type-options">
+            <label class="type-option">
+              <input type="radio" name="proxy-type" value="socks5" checked />
+              <span class="radio-dot"></span>
+              <span>SOCKS5</span>
+              <svg class="type-symbol bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 1.8 5.8 13h5l-.6 9.2L18.2 10h-5.1l.1-8.2Z" fill="currentColor" stroke="none"/></svg>
+            </label>
+            <label class="type-option">
+              <input type="radio" name="proxy-type" value="http" />
+              <span class="radio-dot"></span>
+              <span>HTTP CONNECT</span>
+              <svg class="type-symbol globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3c2.3 2.4 3.4 5.4 3.4 9s-1.1 6.6-3.4 9c-2.3-2.4-3.4-5.4-3.4-9S9.7 5.4 12 3Z"/></svg>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="port-row">
+          <label class="field-label" for="port">
+            <svg class="label-icon port-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5h7v5h-7zM5 9.5h14v4H5zM8 13.5v5h8v-5M12 18.5v2"/><circle cx="5" cy="18.5" r="2"/><circle cx="19" cy="18.5" r="2"/></svg>
+            <span>Локальный порт</span>
+          </label>
+          <input id="port" class="port-input" type="number" value="25565" min="1" max="65535" />
+        </div>
+
+        <div class="actions">
+          <button class="action-button primary" type="button" id="startBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8c0-.8.9-1.3 1.6-.9l11 7.1a1.2 1.2 0 0 1 0 2L8.6 20.1c-.7.4-1.6-.1-1.6-.9V4.8Z" fill="currentColor" stroke="none"/></svg>
+            <span>Запустить туннель</span>
+          </button>
+          <button class="action-button secondary" type="button" id="stopBtn" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor" stroke="none"/></svg>
+            <span>Остановить</span>
+          </button>
+          <button class="action-button secondary test-button" type="button" id="testBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h16M4 18h10M18 4v4M8 10v4M18 16v4"/><circle cx="18" cy="6" r="1.8"/><circle cx="8" cy="12" r="1.8"/><circle cx="18" cy="18" r="1.8"/></svg>
+            <span>Проверить прокси</span>
+          </button>
+        </div>
+
+        <section class="traffic-card" aria-label="Статус туннеля" id="trafficCard">
+          <div class="traffic-bars" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="traffic-copy">
+            <div class="traffic-title" id="trafficTitle">Туннель остановлен <span class="status-dot stopped" id="statusDot"></span></div>
+            <div class="traffic-meta">
+              <span>Сессии: <b id="statSessions">0</b></span><span class="meta-separator">•</span>
+              <span>Активен: <b id="statUptime">—</b></span><span class="meta-separator">•</span>
+              <span>Трафик: <b id="statTraffic">0 B / 0 B</b></span>
+            </div>
+          </div>
+          <svg class="traffic-chart" viewBox="0 0 160 60" preserveAspectRatio="none" aria-label="График трафика">
+            <defs><linearGradient id="chart-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8b65ff" stop-opacity=".28"/><stop offset="1" stop-color="#8b65ff" stop-opacity="0"/></linearGradient></defs>
+            <path class="chart-area" id="chartArea" d=""/>
+            <path class="chart-line" id="chartLine" d=""/>
+          </svg>
+        </section>
+      </section>
+
+      <section class="logs-panel" aria-label="Логи подключения">
+        <header class="logs-header">
+          <div class="logs-title">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h8l5 5v12H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"/><path d="M14 3.8v5h5M8 13h8M8 17h8"/></svg>
+            <span>Лог</span>
+          </div>
+          <div class="logs-actions">
+            <button class="square-button" type="button" id="clearLog" title="Очистить лог" aria-label="Очистить лог">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 10v7M14 10v7"/></svg>
+            </button>
+            <button class="square-button" type="button" id="saveLog" title="Сохранить лог" aria-label="Сохранить лог">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h11l4 4v11H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z"/><path d="M8 4.5v5h8v-5M8 19v-6h8v6"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="log-scroll" id="logScroll">
+          <div class="log-lines" id="logLines" role="log" aria-live="polite"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
