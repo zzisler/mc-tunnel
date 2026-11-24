@@ -150,12 +150,12 @@
 
   function withBusy(kind, fn) {
     ui.busy = kind;
-    const button = kind === 'test' ? els.test : els.start;
+    const button = kind === 'test' ? els.test : kind === 'stop' ? els.stop : els.start;
     const label = button.querySelector('span');
     const icon = button.querySelector('svg');
     const saved = label.textContent;
     icon.style.display = 'none';
-    label.textContent = kind === 'test' ? 'Проверяю…' : 'Запускаю…';
+    label.textContent = kind === 'test' ? 'Проверяю…' : kind === 'stop' ? 'Останавливаю…' : 'Запускаю…';
     button.classList.add('busy');
     refresh();
 
