@@ -58,14 +58,21 @@ func Parse(line string) (Config, error) {
 func parseURL(line string) (Config, error) {
 	u, err := url.Parse(line)
 	if err != nil {
-		return Config{}, fmt.Errorf("proxy line %q: %w", line, err)
+		// url.Error carries the original string in its URL field, and that
+		// string is the proxy line with the password in it. Keep the reason and
+		// drop the URL.
+		var uerr *url.Error
+		if errors.As(err, &uerr) {
+			err = uerr.Err
+		}
+		return Config{}, fmt.Errorf("proxy line %q: %w", maskLine(line), err)
 	}
 	kind, err := ParseKind(u.Scheme)
 	if err != nil {
 		return Config{}, err
 	}
 	if path := strings.Trim(u.Path, "/"); path != "" {
-		return Config{}, fmt.Errorf("proxy line %q: unexpected path %q", line, u.Path)
+		return Config{}, fmt.Errorf("proxy line %q: unexpected path %q", maskLine(line), u.Path)
 	}
 	cfg := Config{Kind: kind}
 	if u.User != nil {
@@ -78,7 +85,7 @@ func parseURL(line string) (Config, error) {
 func finish(cfg Config, hostport, original string) (Config, error) {
 	hostport = strings.TrimSpace(strings.TrimSuffix(hostport, "/"))
 	if hostport == "" {
-		return Config{}, fmt.Errorf("proxy line %q has no address", original)
+		return Config{}, fmt.Errorf("proxy line %q has no address", maskLine(original))
 	}
 	defPort := 0
 	if cfg.Kind != "" {
@@ -86,7 +93,7 @@ func finish(cfg Config, hostport, original string) (Config, error) {
 	}
 	normalised, err := normalise(hostport, defPort)
 	if err != nil {
-		return Config{}, fmt.Errorf("proxy line %q: %w", original, err)
+		return Config{}, fmt.Errorf("proxy line %q: %w", maskLine(original), err)
 	}
 	cfg.Addr = normalised
 	return cfg, nil
@@ -113,4 +120,33 @@ func normalise(s string, defPort int) (string, error) {
 		return "", fmt.Errorf("invalid port %q", port)
 	}
 	return net.JoinHostPort(host, port), nil
+}
+
+// maskLine renders a proxy line safe to quote in an error or a log line: the
+// password is replaced by three stars, everything else is kept so the message
+// still shows what the user typed. An unknown shape is returned unchanged.
+func maskLine(line string) string {
+	if scheme, rest, ok := strings.Cut(line, "://"); ok {
+		if at := strings.LastIndex(rest, "@"); at >= 0 {
+			return scheme + "://" + maskUserInfo(rest[:at]) + rest[at:]
+		}
+		return line
+	}
+	if at := strings.LastIndex(line, "@"); at >= 0 {
+		return maskUserInfo(line[:at]) + line[at:]
+	}
+	// host:port:user:pass — four or more fields, no scheme. Bare IPv6 has many
+	// colons too, but it is not a user:pass shape, so leave it alone.
+	if parts := strings.Split(line, ":"); len(parts) >= 4 && !strings.Contains(line, "::") {
+		return parts[0] + ":" + parts[1] + ":" + parts[2] + ":***"
+	}
+	return line
+}
+
+// maskUserInfo replaces the password in a "user:pass" pair with three stars.
+func maskUserInfo(userInfo string) string {
+	if i := strings.Index(userInfo, ":"); i >= 0 {
+		return userInfo[:i] + ":***"
+	}
+	return userInfo + ":***"
 }

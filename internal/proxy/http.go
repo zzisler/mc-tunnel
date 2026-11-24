@@ -13,6 +13,14 @@ import (
 	"time"
 )
 
+// Limits for the CONNECT response. A hostile or broken proxy could otherwise
+// keep a goroutine busy and grow memory: the line read is capped by the buffer
+// size, and the number of headers by maxHTTPHeaders.
+const (
+	maxHTTPLine    = 8 << 10
+	maxHTTPHeaders = 100
+)
+
 // httpProxy tunnels TCP through an HTTP proxy using the CONNECT method.
 type httpProxy struct {
 	cfg Config
@@ -36,7 +44,7 @@ func (p *httpProxy) Dial(ctx context.Context, target string) (net.Conn, error) {
 	}
 	stop := cancelOnDone(ctx, conn)
 
-	br := bufio.NewReader(conn)
+	br := bufio.NewReaderSize(conn, maxHTTPLine)
 	if err := p.connect(br, conn, target); err != nil {
 		stop()
 		conn.Close()
@@ -76,7 +84,10 @@ func (p *httpProxy) connect(br *bufio.Reader, conn net.Conn, target string) erro
 		return err
 	}
 	// Drain the rest of the response headers.
-	for {
+	for i := 0; ; i++ {
+		if i > maxHTTPHeaders {
+			return errors.New("http proxy: too many response headers")
+		}
 		line, err := readHTTPLine(br)
 		if err != nil {
 			return fmt.Errorf("http proxy: reading response headers: %w", err)
@@ -99,15 +110,18 @@ func (p *httpProxy) connect(br *bufio.Reader, conn net.Conn, target string) erro
 	return fmt.Errorf("http proxy: connect rejected with HTTP %d %s", code, text)
 }
 
+// readHTTPLine reads one CRLF-terminated line without ever buffering more than
+// the reader's buffer size. ReadString grows until it finds the newline, which
+// lets a proxy that never sends one exhaust memory.
 func readHTTPLine(br *bufio.Reader) (string, error) {
-	line, err := br.ReadString('\n')
+	line, err := br.ReadSlice('\n')
+	if errors.Is(err, bufio.ErrBufferFull) {
+		return "", errors.New("response line too long")
+	}
 	if err != nil {
 		return "", err
 	}
-	if len(line) > 8192 {
-		return "", errors.New("response line too long")
-	}
-	return strings.TrimRight(line, "\r\n"), nil
+	return strings.TrimRight(string(line), "\r\n"), nil
 }
 
 // connectError explains a failed CONNECT exchange. A silent proxy is the most

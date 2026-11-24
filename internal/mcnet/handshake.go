@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"time"
 )
 
 const (
@@ -17,8 +18,9 @@ const (
 	legacyPing byte = 0xFE
 
 	// maxHandshake guards against bogus lengths on connections that are not
-	// Minecraft at all.
-	maxHandshake = 1 << 20
+	// Minecraft at all. A real handshake is a few hundred bytes (the address is
+	// capped at 255), so 4 KiB is generous and keeps the allocation small.
+	maxHandshake = 4 << 10
 
 	// maxHostLength is the limit the protocol itself uses for the address.
 	maxHostLength = 255
@@ -39,6 +41,7 @@ func ForwardStream(dst io.Writer, src io.Reader, host string, port int) error {
 		return err
 	}
 	if first[0] == legacyPing {
+		clearReadDeadline(src)
 		_, err := io.Copy(dst, br)
 		return err
 	}
@@ -48,18 +51,27 @@ func ForwardStream(dst io.Writer, src io.Reader, host string, port int) error {
 	var raw bytes.Buffer
 	tee := io.TeeReader(br, &raw)
 
+	// pass gives up on rewriting and forwards the stream verbatim. The
+	// first-packet deadline set by the caller is dropped first: from here on the
+	// session may idle for as long as the game does.
+	pass := func() error {
+		clearReadDeadline(src)
+		return passthrough(dst, &raw, br)
+	}
+
 	length, err := ReadVarInt(tee)
 	if err != nil || length < 1 || length > maxHandshake {
-		return passthrough(dst, &raw, br)
+		return pass()
 	}
 	payload := make([]byte, length)
 	if _, err := io.ReadFull(tee, payload); err != nil {
-		return passthrough(dst, &raw, br)
+		return pass()
 	}
 	rewritten, ok := rewriteHandshake(payload, host, port)
 	if !ok {
-		return passthrough(dst, &raw, br)
+		return pass()
 	}
+	clearReadDeadline(src)
 
 	out := AppendVarInt(make([]byte, 0, len(rewritten)+5), len(rewritten))
 	out = append(out, rewritten...)
@@ -80,6 +92,14 @@ func passthrough(dst io.Writer, raw *bytes.Buffer, rest io.Reader) error {
 	}
 	_, err := io.Copy(dst, rest)
 	return err
+}
+
+// clearReadDeadline drops a read deadline that the caller set to bound the first
+// packet, so the rest of the session is not limited by it.
+func clearReadDeadline(r io.Reader) {
+	if d, ok := r.(interface{ SetReadDeadline(time.Time) error }); ok {
+		_ = d.SetReadDeadline(time.Time{})
+	}
 }
 
 // rewriteHandshake rebuilds a handshake packet with a different host and port.

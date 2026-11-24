@@ -23,7 +23,7 @@ func TestParseValid(t *testing.T) {
 		{"1.2.3.4:1080:user:pass", Config{Addr: "1.2.3.4:1080", User: "user", Pass: "pass"}},
 		{"[2001:db8::1]:1080", Config{Addr: "[2001:db8::1]:1080"}},
 		{"socks5://[2001:db8::1]:1080", Config{Kind: SOCKS5, Addr: "[2001:db8::1]:1080"}},
-		{`  "http://u:p@1.1.1.1:3128"  `, Config{Kind: HTTP, Addr: "1.1.1.1:3128", User: "u", Pass: "p"}},
+		{`  "http://u:p@192.0.2.1:3128"  `, Config{Kind: HTTP, Addr: "192.0.2.1:3128", User: "u", Pass: "p"}},
 		{"user@host.tld:1080", Config{Addr: "host.tld:1080", User: "user"}},
 	}
 	for _, tc := range cases {
