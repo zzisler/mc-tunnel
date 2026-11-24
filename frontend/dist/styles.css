@@ -19,7 +19,7 @@
   --purple: #9770ff;
   --purple-2: #6844e5;
   --green: #55e888;
-  --font-ui: "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-code: "Cascadia Code", Consolas, "Liberation Mono", monospace;
 }
 
@@ -34,6 +34,8 @@ body {
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   background:
     radial-gradient(ellipse 62% 48% at 50% 108%, rgba(91, 62, 188, .32), transparent 72%),
     radial-gradient(ellipse 44% 38% at 95% 4%, rgba(70, 55, 133, .13), transparent 76%),
@@ -137,7 +139,7 @@ button { color: inherit; }
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 17px;
 }
 
 /* ------------------------------------------------------------------ fields */
@@ -308,22 +310,22 @@ button { color: inherit; }
 
 /* ----------------------------------------------------------------- buttons */
 
-.actions { display: grid; grid-template-columns: 1.24fr .96fr 1.16fr; gap: 8px; margin-top: 1px; }
+.actions { display: grid; grid-template-columns: 1fr .95fr 1.35fr; gap: 8px; margin-top: 1px; }
 
 .action-button {
   min-width: 0;
-  height: 38px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
   padding: 0 8px;
   border: 1px solid rgba(139, 130, 191, .22);
   border-radius: 9px;
   color: #c7c4e4;
   background: linear-gradient(120deg, rgba(30, 29, 48, .96), rgba(23, 22, 38, .98));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025), 0 4px 12px rgba(0, 0, 0, .1);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -331,7 +333,7 @@ button { color: inherit; }
 }
 .action-button:hover { transform: translateY(-1px); border-color: rgba(158, 127, 255, .55); box-shadow: 0 5px 16px rgba(0, 0, 0, .18), 0 0 16px rgba(123, 90, 235, .1); }
 .action-button:active { transform: translateY(0) scale(.995); }
-.action-button svg { width: 16px; height: 16px; flex: 0 0 16px; fill: currentColor; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.action-button svg { width: 17px; height: 17px; flex: 0 0 17px; fill: currentColor; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .action-button.primary {
   color: #fff;
@@ -362,11 +364,11 @@ button { color: inherit; }
 
 .traffic-card {
   margin-top: auto;
-  min-height: 60px;
+  min-height: 54px;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 1px solid rgba(132, 124, 184, .18);
   border-radius: 10px;
   background: linear-gradient(105deg, rgba(25, 25, 42, .91), rgba(17, 17, 31, .94));
@@ -395,7 +397,7 @@ button { color: inherit; }
 .traffic-meta b { color: #c9c6e3; font-weight: 500; }
 .meta-separator { color: #6f6c88; }
 
-.traffic-chart { width: 92px; height: 34px; flex: 0 0 92px; overflow: visible; opacity: .9; }
+.traffic-chart { width: 92px; height: 28px; flex: 0 0 92px; overflow: visible; opacity: .9; }
 .chart-area { fill: url(#chart-fill); }
 .chart-line { fill: none; stroke: #8966f3; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
