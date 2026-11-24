@@ -448,7 +448,8 @@ button { color: inherit; }
 .log-scroll {
   min-height: 0;
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 7px 8px 9px 10px;
   scrollbar-width: thin;
   scrollbar-color: #77729d #171626;
@@ -460,27 +461,31 @@ button { color: inherit; }
 .log-lines { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 /* Three columns: the peer address sits inside the message cell, so lines that
-   have no address do not leave a hole and the text gets the whole width. */
+   have no address do not leave a hole and the text gets the whole width.
+   Messages wrap instead of being cut: a truncated log line hides exactly the
+   part that explains the failure. */
 .log-line {
   display: grid;
-  grid-template-columns: 68px 24px minmax(0, 1fr);
-  align-items: baseline;
-  column-gap: 7px;
-  min-height: 16px;
+  grid-template-columns: 84px 26px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
   padding: 1px 4px;
   border-radius: 4px;
   color: #e1e0f1;
   font-family: var(--font-code);
   font-size: 11px;
-  line-height: 1.55;
+  line-height: 1.5;
   letter-spacing: -.1px;
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .log-line:hover { background: rgba(139, 106, 255, .07); }
-.log-line time { color: #a9a5c9; }
-.log-line b { color: #9b78ff; font-weight: 700; }
-.log-line .log-body { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.log-line time { color: #a9a5c9; white-space: nowrap; }
+.log-line b { color: #9b78ff; font-weight: 700; white-space: nowrap; }
+.log-line .log-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .log-line .log-addr { color: #cfcbe8; margin-right: 6px; }
 .log-line .log-msg { color: #d8d5ec; }
 
