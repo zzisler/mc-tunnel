@@ -79,12 +79,16 @@ jobs:
           # tag object is missing from the checkout, which is exactly what a
           # detached tag build looks like. Read the annotation explicitly.
           $notes = (git tag -l --format="%(contents)" $env:GITHUB_REF_NAME) -join "`n"
-          if ([string]::IsNullOrWhiteSpace($notes)) {
-            throw "Tag $env:GITHUB_REF_NAME has no annotation; write the release notes in the tag message."
-          }
-          $notes | Set-Content release-notes.md -Encoding utf8
-
           $files = Get-ChildItem "MC-Tunnel-$env:GITHUB_REF_NAME-windows-*" | ForEach-Object { $_.Name }
-          gh release create $env:GITHUB_REF_NAME @files `
-            --title "MC Tunnel $env:GITHUB_REF_NAME" `
-            --notes-file release-notes.md
+          $title = "MC Tunnel $env:GITHUB_REF_NAME"
+
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+            # An unannotated tag still gets a release: empty body beats no
+            # release. Write the notes in the tag message to fill it in.
+            Write-Host "Tag $env:GITHUB_REF_NAME has no annotation, publishing without release notes."
+            gh release create $env:GITHUB_REF_NAME @files --title $title --notes ""
+            exit $LASTEXITCODE
+          }
+
+          $notes | Set-Content release-notes.md -Encoding utf8
+          gh release create $env:GITHUB_REF_NAME @files --title $title --notes-file release-notes.md
