@@ -16,8 +16,8 @@ import (
 // Window geometry. The design is laid out for exactly this client area: it is
 // fixed, because resizing would break the two-column layout.
 const (
-	windowWidth  = 1220
-	windowHeight = 760
+	windowWidth  = 960
+	windowHeight = 440
 )
 
 //go:embed all:frontend/dist

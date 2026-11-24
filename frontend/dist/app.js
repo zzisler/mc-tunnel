@@ -77,7 +77,8 @@
     const lvl = (level || 'INF').toUpperCase();
     line.className = 'log-line ' + (lvl === 'WRN' ? 'wrn' : lvl === 'ERR' ? 'err' : lvl === 'DBG' ? 'dbg' : '');
 
-    // Backend lines usually start with a peer address; show it in its own column.
+    // Backend lines usually start with a peer address; show it in its own
+    // column instead of padding every line with an empty one.
     const m = /^(\d{1,3}(?:\.\d{1,3}){3}:\d+|\[[0-9a-f:]+\]:\d+)\s+(.*)$/i.exec(msg || '');
     const addr = m ? m[1] : '';
     const rest = m ? m[2] : msg || '';
@@ -86,13 +87,22 @@
     timeEl.textContent = time || clockText(new Date());
     const lvlEl = document.createElement('b');
     lvlEl.textContent = lvl;
-    const addrEl = document.createElement('span');
-    addrEl.className = 'log-addr';
-    addrEl.textContent = addr;
-    const msgEl = document.createElement('span');
-    msgEl.textContent = rest;
 
-    line.append(timeEl, lvlEl, addrEl, msgEl);
+    const body = document.createElement('span');
+    body.className = 'log-body';
+    if (addr) {
+      const addrEl = document.createElement('span');
+      addrEl.className = 'log-addr';
+      addrEl.textContent = addr;
+      body.append(addrEl);
+    }
+    const msgEl = document.createElement('span');
+    msgEl.className = 'log-msg';
+    msgEl.textContent = rest;
+    msgEl.title = rest;
+    body.append(msgEl);
+
+    line.append(timeEl, lvlEl, body);
     els.logLines.append(line);
 
     while (els.logLines.children.length > 600) els.logLines.firstElementChild.remove();
@@ -131,15 +141,23 @@
   }
 
   function drawChart() {
-    const h = ui.history.length ? ui.history : [0];
-    const max = Math.max(...h, 1);
+    const h = ui.history;
+    if (h.length < 2) {
+      els.chartLine.setAttribute('d', '');
+      els.chartArea.setAttribute('d', '');
+      return;
+    }
+
+    const min = Math.min(...h);
+    const max = Math.max(...h);
+    const span = max - min || 1;
     const w = 160;
+
     const points = h.map((v, i) => {
-      const x = (i / Math.max(h.length - 1, 1)) * w;
-      const y = 56 - (v / max) * 44;
+      const x = (i / (h.length - 1)) * w;
+      const y = 48 - ((v - min) / span) * 34;
       return [x, y];
     });
-    if (points.length === 1) points.push([w, points[0][1]]);
 
     const d = points
       .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`)
