@@ -11,6 +11,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 // Window geometry. The design is laid out for exactly this client area: it is
@@ -45,6 +46,11 @@ func main() {
 		OnStartup:     app.startup,
 		OnBeforeClose: app.beforeClose,
 		Bind:          []any{app},
+		Windows: &windows.Options{
+			// A named class lets the window be found again for shaping, without
+			// matching on the title text.
+			WindowClassName: windowClass,
+		},
 	})
 	if err != nil {
 		panic(err)

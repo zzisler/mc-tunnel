@@ -88,6 +88,7 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.log.SetHook(a.wake)
 	go a.pump()
+	go shapeWindow()
 
 	path, err := settings.ResolvePath()
 	if err != nil {
