@@ -27,6 +27,11 @@ import (
 // ErrRunning is returned by Start when a tunnel is already running.
 var ErrRunning = errors.New("tunnel is already running")
 
+// defaultMaxSessions caps how many clients the listener serves at once. A local
+// game only ever needs one, so the limit is really there to keep a misbehaving
+// or hostile local process from opening connections without bound.
+const defaultMaxSessions = 64
+
 // Config describes one run of the tunnel.
 type Config struct {
 	// Server is the Minecraft server address, host or host:port. The default
@@ -38,6 +43,8 @@ type Config struct {
 	Proxy proxy.Dialer
 	// Transport defaults to relay.TCP when nil.
 	Transport relay.Transport
+	// MaxSessions caps concurrent sessions; 0 means defaultMaxSessions.
+	MaxSessions int
 }
 
 // Manager starts, stops and reports on the tunnel.
@@ -65,6 +72,10 @@ type run struct {
 	cmu   sync.Mutex
 	conns map[net.Conn]struct{}
 	wg    sync.WaitGroup
+
+	// sessions is a semaphore: a slot is taken before a session goroutine runs
+	// and released when it ends.
+	sessions chan struct{}
 }
 
 // New returns a Manager that logs to log.
@@ -105,6 +116,10 @@ func (m *Manager) Start(cfg Config) ([]string, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	m.stats.Reset()
+	maxSessions := cfg.MaxSessions
+	if maxSessions <= 0 {
+		maxSessions = defaultMaxSessions
+	}
 	r := &run{
 		cfg:       cfg,
 		target:    target,
@@ -116,6 +131,7 @@ func (m *Manager) Start(cfg Config) ([]string, error) {
 		stats:     &m.stats,
 		log:       m.log,
 		conns:     make(map[net.Conn]struct{}),
+		sessions:  make(chan struct{}, maxSessions),
 	}
 	m.run = r
 	for _, ln := range lns {
@@ -191,10 +207,19 @@ func (r *run) acceptLoop(ln net.Listener) {
 			_ = client.Close()
 			continue
 		}
+		select {
+		case r.sessions <- struct{}{}:
+		default:
+			r.log.Warnf("%s: session limit reached (%d), connection refused",
+				client.RemoteAddr(), cap(r.sessions))
+			_ = client.Close()
+			continue
+		}
 		r.track(client)
 		r.wg.Add(1)
 		go func() {
 			defer r.wg.Done()
+			defer func() { <-r.sessions }()
 			r.session(client)
 		}()
 	}

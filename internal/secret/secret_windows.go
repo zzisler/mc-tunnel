@@ -4,7 +4,8 @@
 //
 // The point is a saved proxy password: CryptProtectData ties the ciphertext to
 // the current Windows account, so config.json is useless when copied to another
-// machine or read by another user.
+// machine or read by another Windows account. It does not defend against other
+// programs running as the same user; see the entropy comment below.
 package secret
 
 import (
@@ -28,8 +29,11 @@ var (
 	procLocalFree          = kernel32.NewProc("LocalFree")
 )
 
-// entropy is mixed into the key so that another program running as the same
-// user cannot decrypt this blob just by calling DPAPI on the same bytes.
+// entropy is mixed into the key. It is a constant in the source, so it does not
+// stop another program running as the same user: anyone who reads this file can
+// call DPAPI on the same bytes and get the plaintext back. What DPAPI itself
+// buys is the account binding — the blob cannot be decrypted from another
+// Windows account or another machine, so a copied config.json is useless.
 var entropy = []byte("mctunnel/config/v1")
 
 // dataBlob mirrors DATA_BLOB.

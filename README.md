@@ -143,6 +143,10 @@ GitHub release. Nothing has to be built by hand for a release.
   the edge is stepped; on Windows 11 the compositor does it smoothly.
 - WebView2 is required: present on Windows 11, usually installed with Edge on
   Windows 10.
+- The listener is bound to loopback but has **no authentication**: any process or
+  signed-in user on the machine can connect to `127.0.0.1:25565` and use the
+  tunnel, with its saved proxy credentials. It is capped at 64 simultaneous
+  sessions, and a new session has 10 seconds to send its first packet.
 
 ## License
 
