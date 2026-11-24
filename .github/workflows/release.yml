@@ -75,7 +75,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # --notes-from-tag silently falls back to the commit message when the
+          # tag object is missing from the checkout, which is exactly what a
+          # detached tag build looks like. Read the annotation explicitly.
+          $notes = (git tag -l --format="%(contents)" $env:GITHUB_REF_NAME) -join "`n"
+          if ([string]::IsNullOrWhiteSpace($notes)) {
+            throw "Tag $env:GITHUB_REF_NAME has no annotation; write the release notes in the tag message."
+          }
+          $notes | Set-Content release-notes.md -Encoding utf8
+
           $files = Get-ChildItem "MC-Tunnel-$env:GITHUB_REF_NAME-windows-*" | ForEach-Object { $_.Name }
           gh release create $env:GITHUB_REF_NAME @files `
             --title "MC Tunnel $env:GITHUB_REF_NAME" `
-            --notes-from-tag
+            --notes-file release-notes.md
