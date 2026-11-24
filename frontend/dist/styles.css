@@ -1,0 +1,524 @@
+/* MC Tunnel — спокойная тёмная тема.
+ *
+ * Принципы:
+ *  - один акцент (приглушённый фиолетовый) — только для главного действия,
+ *    фокуса и выбранного состояния. Всё остальное — нейтральный графит.
+ *  - никаких свечений, градиентов и теней: глубина = разница в оттенках + тонкая линия.
+ *  - цвет в интерфейсе несёт смысл: зелёный/жёлтый/красный — только статус.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --bg:        #0f1013;   /* окно */
+  --inset:     #0b0c0e;   /* утопленные зоны: лог */
+  --surface:   #16171b;   /* поля ввода, кнопки */
+  --raised:    #202228;   /* hover, выбранный сегмент */
+  --line:      #24262c;   /* тонкие границы */
+  --line-2:    #343741;   /* границы при hover */
+
+  --text:      #e7e8ec;
+  --muted:     #8e919c;
+  --faint:     #5b5e69;
+
+  --accent:    #7c68ee;
+  --accent-hi: #8d7bf3;
+  --accent-tx: #a99cff;   /* акцентный цвет для текста/фокуса */
+
+  --ok:   #4ade80;
+  --warn: #f5b942;
+  --err:  #f0707a;
+
+  --radius: 8px;
+
+  --font-ui:   "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-code: "Cascadia Code", Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; overflow: hidden; }
+
+body {
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button, input { font: inherit; }
+button { color: inherit; }
+
+:focus-visible { outline: 2px solid var(--accent-tx); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ shell */
+
+.app-window {
+  position: relative;
+  isolation: isolate;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ------------------------------------------------------------------ свечение */
+
+/* Едва заметное пятно света за интерфейсом. Двигает его glow.js через transform
+   (это дёшево: браузер двигает готовую текстуру, а не перерисовывает фон). */
+.glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(124, 104, 238, .17) 0%, rgba(124, 104, 238, .07) 38%, transparent 68%);
+  transform: translate3d(480px, 200px, 0);
+  will-change: transform;
+}
+
+.titlebar,
+.workspace { position: relative; z-index: 1; }
+
+/* --------------------------------------------------------------- title bar */
+
+.titlebar {
+  flex: 0 0 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px 0 14px;
+  border-bottom: 1px solid var(--line);
+  --wails-draggable: drag;
+  user-select: none;
+  cursor: default;
+}
+
+.window-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.brand-cube { display: inline-flex; width: 16px; height: 16px; }
+.brand-cube svg { width: 100%; height: 100%; }
+
+.window-controls { display: flex; gap: 2px; --wails-draggable: no-drag; }
+
+.window-control {
+  position: relative;
+  width: 30px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.window-control:hover { background: var(--raised); }
+.window-control.close:hover { background: #b83b4f; }
+
+.window-control.minimize span,
+.window-control.close span::before,
+.window-control.close span::after {
+  position: absolute;
+  height: 1.3px;
+  border-radius: 1px;
+  background: var(--muted);
+}
+.window-control.minimize:hover span,
+.window-control:hover span::before,
+.window-control:hover span::after { background: #fff; }
+
+.window-control.minimize span { left: 10px; top: 11px; width: 11px; }
+.window-control.close span::before,
+.window-control.close span::after { content: ""; top: 11px; left: 9px; width: 12px; }
+.window-control.close span::before { transform: rotate(45deg); }
+.window-control.close span::after  { transform: rotate(-45deg); }
+
+/* --------------------------------------------------------------- workspace */
+
+.workspace {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: 20px;
+  padding: 16px 16px 16px 18px;
+}
+
+.settings {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ------------------------------------------------------------------ fields */
+
+.field-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.field-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+.label-hint { color: var(--faint); font-weight: 400; }
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.input-wrap:hover { border-color: var(--line-2); }
+.input-wrap:focus-within,
+.port-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124, 104, 238, .14); }
+
+.input-wrap input {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 34px 0 11px;
+  color: var(--text);
+  font-size: 12.5px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.input-wrap input::placeholder { color: var(--faint); }
+.input-wrap input::selection { background: rgba(124, 104, 238, .4); }
+
+.inline-icon-button {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--faint);
+  background: transparent;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease;
+}
+.inline-icon-button:hover { color: var(--text); background: var(--raised); }
+.inline-icon-button.copied { color: var(--ok); }
+.inline-icon-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ------------------------------------------- тип прокси + порт (в одну строку) */
+
+.options-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px;
+  gap: 12px;
+}
+
+.proxy-type { min-width: 0; margin: 0; padding: 0; border: 0; }
+.proxy-type legend { margin-bottom: 6px; padding: 0; }
+
+/* Переключатель с «ползунком»: акцентная плашка плавно переезжает
+   под выбранный вариант. Сами radio остаются настоящими, работает с клавиатуры. */
+.type-options {
+  position: relative;
+  height: 34px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.type-options::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border: 1px solid rgba(124, 104, 238, .6);
+  border-radius: 5px;
+  background: rgba(124, 104, 238, .16);
+  transition: transform .22s cubic-bezier(.3, .7, .2, 1);
+}
+.type-options:has(input[value="http"]:checked)::before { transform: translateX(100%); }
+
+.type-option {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .15s ease;
+}
+.type-option:hover { color: var(--text); }
+.type-option:has(input:checked) { color: var(--accent-tx); }
+.type-option:has(input:focus-visible) { outline: 2px solid var(--accent-tx); outline-offset: 1px; border-radius: 5px; }
+.type-option input { position: absolute; opacity: 0; pointer-events: none; }
+.radio-dot { display: none; }
+
+.port-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  transition: border-color .12s ease;
+  appearance: textfield;
+}
+.port-input:hover { border-color: var(--line-2); }
+.port-input::-webkit-inner-spin-button,
+.port-input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+
+/* ----------------------------------------------------------------- buttons */
+
+.actions { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; margin-top: 4px; }
+
+.action-button {
+  min-width: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, opacity .12s ease;
+}
+.action-button:hover { background: var(--raised); border-color: var(--line-2); }
+.action-button svg { width: 15px; height: 15px; flex: 0 0 15px; fill: currentColor; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.action-button.secondary svg { color: var(--muted); }
+.test-button svg { fill: none; }
+
+.action-button.primary { color: #fff; border-color: var(--accent); background: var(--accent); }
+.action-button.primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+
+.action-button:disabled { opacity: .4; cursor: default; }
+.action-button:disabled:hover { background: var(--surface); border-color: var(--line); }
+.action-button.busy { pointer-events: none; }
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 2px solid rgba(255, 255, 255, .25);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------ статус */
+
+/* Карточка забирает всё свободное место под кнопками.
+   Внутри: сверху состояние + график, снизу схема «игра → прокси → сервер». */
+.traffic-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(22, 23, 27, .72);
+}
+
+.traffic-head { display: flex; align-items: center; gap: 12px; }
+
+.traffic-bars { flex: 0 0 24px; height: 24px; display: flex; align-items: flex-end; gap: 3px; }
+.traffic-bars i {
+  display: block;
+  width: 5px;
+  border-radius: 2px;
+  background: var(--ok);
+  opacity: .3;
+  transform-origin: bottom;
+  transition: opacity .25s ease;
+}
+.traffic-bars i:nth-child(1) { height: 9px; }
+.traffic-bars i:nth-child(2) { height: 16px; }
+.traffic-bars i:nth-child(3) { height: 22px; }
+.traffic-card.running .traffic-bars i { opacity: 1; animation: level 1.1s ease-in-out infinite alternate; }
+.traffic-card.running .traffic-bars i:nth-child(2) { animation-delay: -.35s; }
+.traffic-card.running .traffic-bars i:nth-child(3) { animation-delay: -.7s; }
+@keyframes level { from { transform: scaleY(.55); } to { transform: scaleY(1); } }
+
+.traffic-copy { min-width: 0; flex: 1 1 auto; }
+
+/* точка стоит в HTML после текста — визуально ставим её слева */
+.traffic-title {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.traffic-title.error { color: var(--err); }
+
+.status-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--ok); }
+.status-dot.pending { background: var(--warn); }
+.status-dot.stopped { background: var(--faint); }
+.status-dot.error   { background: var(--err); }
+
+.traffic-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 3px; padding-left: 15px; color: var(--muted); font-size: 10.5px; }
+.traffic-meta b { color: var(--text); font-weight: 400; font-variant-numeric: tabular-nums; }
+.meta-separator { color: var(--faint); }
+
+.traffic-chart {
+  flex: 1 1 0;
+  width: 100%;
+  height: 0;            /* высоту даёт flex, а не пропорции svg */
+  min-height: 24px;
+  overflow: visible;
+  background: linear-gradient(var(--line), var(--line)) bottom / 100% 1px no-repeat;
+}
+.chart-area { fill: url(#chart-fill); }
+.chart-line { vector-effect: non-scaling-stroke; fill: none; stroke: var(--accent-tx); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+
+/* -------------------------------------------------------------- logs panel */
+
+.logs-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(11, 12, 14, .72);
+}
+
+.logs-header {
+  flex: 0 0 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.logs-title { color: var(--text); font-size: 12px; font-weight: 500; }
+.logs-title svg { display: none; }
+
+.logs-actions { display: flex; gap: 2px; }
+
+.square-button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--faint);
+  background: transparent;
+  cursor: pointer;
+  transition: color .12s ease, background .12s ease;
+}
+.square-button:hover { color: var(--text); background: var(--raised); }
+.square-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.log-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px 10px 10px;
+  background: radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px) 7px 7px / 14px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+.log-scroll::-webkit-scrollbar { width: 8px; }
+.log-scroll::-webkit-scrollbar-track { background: transparent; }
+.log-scroll::-webkit-scrollbar-thumb { border: 2px solid var(--inset); border-radius: 8px; background: var(--line-2); }
+
+.log-lines { flex: 1 0 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+/* пустой лог — подсказка, что делать дальше */
+.log-lines:empty { align-items: center; justify-content: center; }
+.log-lines:empty::before { content: "Тут появятся события туннеля. Нажми «Запустить»."; color: var(--faint); font-size: 12px; }
+
+/* Три колонки: время / уровень / текст. Адрес пира лежит внутри текста,
+   поэтому у строк без адреса нет «дыр». Текст переносится, а не режется:
+   обрезанная строка лога прячет как раз то, что объясняет ошибку. */
+.log-line {
+  display: grid;
+  grid-template-columns: 84px 28px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: var(--font-code);
+  font-size: 11px;
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+  animation: line-in .18s ease-out;
+}
+@keyframes line-in { from { opacity: 0; transform: translateY(3px); } }
+.log-line:hover { background: rgba(255, 255, 255, .03); }
+.log-line time { color: var(--faint); white-space: nowrap; }
+.log-line b { color: var(--faint); font-weight: 500; white-space: nowrap; }
+.log-line .log-body { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.log-line .log-addr { color: var(--muted); margin-right: 6px; }
+.log-line .log-msg { color: var(--text); }
+
+/* цвет только там, где что-то пошло не так */
+.log-line.wrn b,
+.log-line.wrn .log-msg { color: var(--warn); }
+.log-line.err b,
+.log-line.err .log-msg { color: var(--err); }
+.log-line.dbg b,
+.log-line.dbg .log-msg { color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
