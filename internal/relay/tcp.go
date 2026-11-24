@@ -19,17 +19,33 @@ import (
 // game closed its side, but the far end never sends EOF.
 const defaultHalfCloseGrace = 15 * time.Second
 
+// defaultHandshakeTimeout bounds the wait for the first packet from the client.
+// A connection that is opened and then goes quiet would otherwise hold a
+// session slot for as long as it likes.
+const defaultHandshakeTimeout = 10 * time.Second
+
 // tcpTransport serves Minecraft Java Edition: one TCP stream per session.
 type tcpTransport struct {
-	grace time.Duration
+	grace            time.Duration
+	handshakeTimeout time.Duration
 }
 
 // TCP returns the Minecraft Java Edition transport with the default grace
-// period for half-closed sessions.
-func TCP() Transport { return tcpTransport{grace: defaultHalfCloseGrace} }
+// period for half-closed sessions and the default first-packet timeout.
+func TCP() Transport {
+	return tcpTransport{grace: defaultHalfCloseGrace, handshakeTimeout: defaultHandshakeTimeout}
+}
 
 // TCPWithGrace is TCP with a custom grace period, used by tests.
-func TCPWithGrace(grace time.Duration) Transport { return tcpTransport{grace: grace} }
+func TCPWithGrace(grace time.Duration) Transport {
+	return tcpTransport{grace: grace, handshakeTimeout: defaultHandshakeTimeout}
+}
+
+// TCPWithHandshakeTimeout is TCP with a custom first-packet timeout, used by
+// tests.
+func TCPWithHandshakeTimeout(d time.Duration) Transport {
+	return tcpTransport{grace: defaultHalfCloseGrace, handshakeTimeout: d}
+}
 
 // Name implements Transport.
 func (t tcpTransport) Name() string { return "tcp" }
@@ -59,6 +75,15 @@ func (t tcpTransport) Forward(ctx context.Context, client net.Conn, target strin
 	host, port, err := addr.HostPort(target)
 	if err != nil {
 		return fmt.Errorf("target: %w", err)
+	}
+
+	// Hold the client to a deadline until its first packet arrives. The
+	// handshake reader clears it once it has the packet, so a long-lived session
+	// is not affected.
+	if t.handshakeTimeout > 0 {
+		if d, ok := client.(interface{ SetReadDeadline(time.Time) error }); ok {
+			_ = d.SetReadDeadline(time.Now().Add(t.handshakeTimeout))
+		}
 	}
 
 	done := make(chan error, 2)

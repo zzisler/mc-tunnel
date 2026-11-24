@@ -99,7 +99,7 @@ def draw_ui(expanded: bool) -> Image.Image:
     text(d, (lx + 78, y), "scheme://user:pass@host:port", f_hint, DIM)
     y += 16
     rr(d, (lx, y, lx + lw, y + 32), 8, fill=FIELD, outline=ACCENT, width=1)
-    text(d, (lx + 11, y + 8), "http://user:••••••••@198.51.100.7:39584", f_body, TEXT)
+    text(d, (lx + 11, y + 8), "http://user:••••••••@203.0.113.10:39584", f_body, TEXT)
     y += 45
 
     text(d, (lx, y), "ПРОТОКОЛ", f_label, DIM)
