@@ -16,6 +16,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Refuse to run outside a tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -ne "tag") {
+            throw "This workflow builds a release from a tag. Push a v* tag instead of running it from '$env:GITHUB_REF_NAME'."
+          }
+
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
