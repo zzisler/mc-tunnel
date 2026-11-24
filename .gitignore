@@ -18,6 +18,10 @@ frontend/wailsjs/
 tmp-*
 commit-msg.txt
 
+# The internal project map: architecture notes, decisions, plans. Not for the
+# public repo — README.md is the face of the project.
+PROJECT-MAP.md
+
 # A real configuration. When the roaming profile is not writable the app falls
 # back to this folder, and that file holds a saved proxy password — never commit
 # it. Use config.example.json for a documented sample.

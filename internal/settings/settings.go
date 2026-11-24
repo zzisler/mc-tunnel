@@ -16,7 +16,7 @@
 // its own migration story and silent breakage, for a file of roughly 250 bytes
 // that is read once per start. Revisit only if the file grows into something
 // JSON handles badly (large history, binary payloads) or if it must be sealed as
-// a whole. See "Планы" in README.md.
+// a whole.
 package settings
 
 import (

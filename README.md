@@ -1,296 +1,144 @@
-# MC Tunnel
+<p align="center">
+  <img src="docs/design/appicon/icon-256.png" width="96" alt="MC Tunnel">
+</p>
 
-Локальный TCP-туннель для Minecraft Java Edition: игра подключается к
-`127.0.0.1:25565`, а трафик уходит на настоящий сервер через SOCKS5 или HTTP
-CONNECT прокси. Bedrock/UDP сознательно не поддерживается.
+<h1 align="center">MC Tunnel</h1>
 
-```
-Minecraft ──TCP──> 127.0.0.1:25565 ──MC Tunnel──> SOCKS5/HTTP прокси ──> сервер
-```
+<p align="center">
+  A local tunnel for Minecraft Java: the game connects to <code>127.0.0.1:25565</code>,
+  while the traffic goes to the real server through a SOCKS5 or HTTP CONNECT proxy.
+</p>
 
-## Что нового в 2.0.0
+<p align="center">
+  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows%20x64-0078D6?logo=windows&logoColor=white">
+  <img alt="Go" src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white">
+  <img alt="UI" src="https://img.shields.io/badge/UI-Wails%20%2B%20WebView2-DF0000">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-3fb950">
+</p>
 
-- Новый интерфейс на Wails/WebView2 вместо Win32-окна: свой тёмный вид,
-  шрифт Inter, свечение за курсором, скруглённые углы, фиксированное окно
-  960×440.
-- Журнал больше не прячется: он всегда справа, длинные строки переносятся,
-  уровни различаются цветом.
-- Своя иконка приложения и манифест с `permonitorv2` — на масштабировании
-  125–150 % текст остаётся резким.
-- Тот же движок туннеля и те же настройки: старый Win32-бинарник остаётся
-  в дереве (`cmd/mctunnel`) до полного переезда.
+<p align="center">
+  <b>Русская версия: <a href="README.ru.md">README.ru.md</a></b>
+</p>
 
-## Как пользоваться
+---
 
-1. Запустить `MC-Tunnel.exe`.
-2. **Minecraft сервер** — `host` или `host:port` (порт по умолчанию 25565).
-3. **Прокси** — одна строка, форматы ниже. Протокол подхватывается из схемы,
-   если её нет — берётся из переключателя «Тип прокси».
-4. **Проверить прокси** — проверяет две вещи: (1) что прокси вообще выпускает
-   трафик наружу и какой внешний IP при этом виден, (2) что **ваш сервер**
-   отвечает через этот прокси (делает настоящий server list ping). Вторую
-   проверку можно пропустить, оставив поле сервера пустым.
-5. **Запустить**, затем в игре подключиться к `127.0.0.1:25565`.
+## Why
 
-Журнал всегда виден справа: подключения, байты, ошибки прокси. Длинные строки
-переносятся, а не обрезаются — обрезанной обычно оказывается как раз причина
-ошибки. Сверху слева — свёрнуть и закрыть, окно тянется за шапку.
-
-Интерфейс — веб-страница в WebView2 (Wails), поэтому шрифт Inter, свечение за
-курсором и скруглённые углы рисуются браузерным движком, а туннель, прокси и
-настройки остаются обычным Go-кодом.
-
-## Сохранение настроек
-
-Всё, что введено в форму, запоминается между запусками:
-
-- путь по умолчанию — `%APPDATA%\mctunnel\config.json`;
-- если профиль недоступен на запись (политика, урезанные права, запуск в
-  песочнице), берётся первый рабочий запасной путь: `config.json` рядом с exe,
-  затем `%TEMP%\mctunnel\config.json`. В журнал пишется, какой путь выбран;
-- `MCTUNNEL_CONFIG` переопределяет путь целиком и никогда не подменяется молча:
-  если он указан с ошибкой, в журнале будет внятное сообщение;
-- пишется в двух случаях: после успешного **Start tunnel** и при закрытии окна;
-- запись атомарная: временный файл в той же папке, `fsync`, переименование.
-  Оборванная запись не оставит половинчатый конфиг;
-- если файл не читается (битый JSON, чужая версия схемы), приложение сохраняет
-  его как `config.json.bak`, пишет об этом в журнал и стартует с пустой формой;
-- UTF-8 BOM (его добавляет блокнот) при чтении отбрасывается, так что конфиг
-  можно править руками.
-
-Что хранится: сервер, тип прокси, адрес прокси, логин, локальный порт и
-состояние панели логов.
-
-**Пароль прокси на диск в открытом виде не попадает.** Он шифруется Windows
-DPAPI (`CryptProtectData`) с дополнительной энтропией приложения, поэтому файл
-бесполезен на другой машине и для другой учётной записи Windows. Скопировали
-конфиг на другой компьютер — пароль придётся ввести заново, остальное
-подставится. Если расшифровка невозможна, приложение пишет предупреждение в
-журнал и оставляет поле пароля пустым.
-
-Пример файла (значение `proxy_secret` — зашифрованный блоб):
-
-```json
-{
-  "version": 1,
-  "server": "mc.example.net:25565",
-  "proxy_kind": "socks5",
-  "proxy_addr": "1.2.3.4:1080",
-  "proxy_user": "bob",
-  "proxy_secret": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA...",
-  "local_port": 25565,
-  "logs_visible": true
-}
-```
-
-### Что означают записи в журнале
-
-| Запись | Смысл |
-|---|---|
-| `proxy check: ok, tunnel in 81 ms, exit IP 1.2.3.4` | прокси работает |
-| `server mc.host:25577 through the proxy: Paper 1.20.4, 3/20 players, 143 ms` | всё хорошо: и прокси, и сервер |
-| `server … failed: no answer from … within 15s` | прокси пустил соединение, но данные обратно не идут: чаще всего прокси режет нестандартный порт, либо сервер лежит |
-| `http proxy: no answer to CONNECT … the proxy likely blocks this host or port` | то же самое, но отвалилось ещё на этапе CONNECT |
-| `proxy check: failed: … authentication` | неверный логин/пароль прокси |
-
-### Форматы строки прокси
+A proxy sees Minecraft traffic as ordinary TCP. MC Tunnel puts a small local
+middleman between the game and the proxy: the game believes it is playing on
+`127.0.0.1:25565`, while the connection actually leaves through the proxy to the
+server you want. Useful when the server is unreachable directly and a proxy is
+all you have.
 
 ```
-socks5://user:pass@1.2.3.4:1080
-http://user:pass@1.2.3.4:8080
-user:pass@1.2.3.4:1080
-1.2.3.4:1080:user:pass
-1.2.3.4:1080
+Minecraft ──TCP──> 127.0.0.1:25565 ──MC Tunnel──> SOCKS5 / HTTP proxy ──> server
 ```
 
-Без порта подставляется 1080 для SOCKS5 и 8080 для HTTP.
+It is not a plain byte pump: the tunnel **rewrites the address inside the
+Minecraft handshake** to the real server, so the client never has to know about
+the proxy. If the first packet is not a handshake (a legacy `0xFE` ping, for
+example), the stream passes through byte for byte.
 
-## Что внутри
+## Features
+
+- **SOCKS5** (RFC 1928, with authentication) and **HTTP CONNECT** (Basic auth).
+- **One-button proxy check**: first the exit IP through the proxy, then a real
+  server list ping to your server. You see that the server actually answers, not
+  merely that the proxy accepts connections.
+- **Live log**: connections, traffic counters, proxy errors. Long lines wrap
+  instead of being cut off.
+- **Settings are remembered** between runs; the proxy password is encrypted with
+  Windows DPAPI and never stored as plain text.
+- **A single window, no console**: GUI subsystem, all diagnostics go to the log.
+- **Its own interface**: dark theme, Inter font bundled into the exe, a glow that
+  follows the cursor, rounded corners, an application icon.
+
+## Usage
+
+1. Download `MC-Tunnel.exe` from [Releases](../../releases) and run it.
+2. **Minecraft server** — `host` or `host:port` (port 25565 by default).
+3. **Proxy** — one line, the protocol comes from the scheme:
+   - `socks5://user:pass@host:1080`
+   - `http://user:pass@host:8080`
+   - `user:pass@host:1080` — no scheme, the protocol comes from the switch
+   - `host:1080` — no authentication
+   - `host:1080:user:pass` — the older colon-separated form
+4. **Check proxy** (Проверить прокси) — make sure the proxy is alive and
+   the server answers through it. The server field may be left empty for this
+   check.
+5. **Start** (Запустить) and join `127.0.0.1:25565` in Minecraft.
+
+The local port is configurable. Both loopback addresses are bound, so `localhost`
+in the game works over IPv4 and IPv6 — whichever the client picks.
+
+## Where settings live
+
+- `%APPDATA%\mctunnel\config.json` by default.
+- If the profile is not writable: the folder next to the exe, then
+  `%TEMP%\mctunnel`. The chosen path is always written to the log.
+- The `MCTUNNEL_CONFIG` environment variable sets the path outright and is never
+  silently overridden.
+- The proxy password is encrypted with DPAPI and bound to the Windows account, so
+  the config cannot be carried to another machine as is.
+- Writes are atomic (temp file → `fsync` → rename), so an interrupted run never
+  leaves half a config. An unreadable file is kept as `config.json.bak` and the
+  app starts with an empty form.
+
+## Under the hood
+
+**Layers.** Each one knows only its neighbour:
 
 ```
-main.go               Wails: окно, размеры, скругление, биндинги для страницы
-app.go                методы, которые зовёт интерфейс: Start/Stop/Test/State
-resolve.go            проверка формы: адрес сервера, порт, строка прокси
-frontend/dist/        сама страница: index.html, styles.css, app.js, glow.js
-window.go             скругление углов и манифест окна (DWM или регион)
-cmd/mctunnel/          точка входа старого Win32-варианта
-internal/ui/           старое Win32-окно, остаётся рабочим до полного переезда
-internal/tunnel/       жизненный цикл: listener, сессии, счётчики
-internal/relay/        транспорты: tcp.go (Java), udp.go (заглушка)
-internal/proxy/        протоколы прокси и проверка соединения
-internal/serverprobe/  server list ping к настоящему серверу через прокси
-internal/mcnet/        перезапись адреса в handshake Minecraft, статус-пинг
-internal/settings/     конфиг: чтение, атомарная запись, схема с версией
-internal/secret/       шифрование пароля через Windows DPAPI
-internal/addr/         разбор host:port
-internal/applog/       журнал в памяти + подписка для окна
+main.go / app.go     Wails window and the bindings the page calls
+frontend/dist        HTML/CSS/JS of the interface, no bundler
+internal/tunnel      listener, sessions, counters, hard Stop
+internal/relay       transport: tcp.go (Java), udp.go (a Bedrock placeholder)
+internal/proxy       protocols and checks: socks5.go, http.go, check.go
+internal/mcnet       handshake rewriting, server list ping
+internal/serverprobe server check through the proxy
+internal/settings    config: versioned schema, atomic writes
+internal/secret      Windows DPAPI
+internal/applog      in-memory log plus a subscription for the window
 ```
 
-Каждый слой знает только про соседний:
+## Building
 
-- `app.go` — что нажали на странице, превращает форму в `tunnel.Config` и
-  отдаёт готовый конфиг менеджеру; наружу отдаёт события журнала и статуса;
-- `tunnel` — открывает порт, принимает соединения, ведёт статистику, умеет
-  жёстко всё закрыть по Stop;
-- `relay.Transport` — как именно гнать трафик; сейчас TCP с перезаписью
-  хендшейка, `udp.go` зарезервирован под Bedrock;
-- `proxy.Dialer` — как открыть туннель до сервера; `socks5.go` и `http.go`
-  регистрируют себя в реестре в `proxy.go`.
-
-### Как добавить свой протокол прокси
-
-Нужен один новый файл и `init`:
-
-```go
-// internal/proxy/vless.go
-package proxy
-
-func init() {
-    Register("vless", func(cfg Config) (Dialer, error) { return &vless{cfg: cfg}, nil })
-}
-```
-
-`ParseKind` и подсказки в интерфейсе после этого заработают сами.
-
-### Как добавить транспорт
-
-`internal/relay/udp.go` показывает каркас: реализовать `Forward` и вернуть
-`relay.UDP()` из `tunnel.Config.Transport`. Для Bedrock понадобится SOCKS5 UDP
-ASSOCIATE (HTTP CONNECT датаграммы не переносит), это отдельная задача.
-
-## Сборка и тесты
-
-Новый интерфейс собирается Wails:
+You need Go 1.25 and the Wails CLI:
 
 ```cmd
-go install github.com/wailsapp/wails/v2/cmd/wails@latest   :: один раз
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
 wails build -s -m
 ```
 
-Два флага, оба нужны:
+- `-s` — the frontend is already built, npm is not involved;
+- `-m` — skip `go mod tidy`, the dependencies are pinned.
 
-- `-s` — не собирать фронтенд. В `frontend/dist` лежат готовые `index.html`,
-  `styles.css`, `app.js`, `glow.js` и шрифты: ни npm, ни бандлера в проекте
-  нет. Без этого флага Wails полезет в `npm install`.
-- `-m` — не запускать `go mod tidy` перед сборкой. Зависимости уже зафиксированы
-  в `go.mod`, а лишний tidy перезаписывает файл при каждой сборке. Если
-  добавишь новый импорт в Go — прогони `go mod tidy` сам, разово.
+The executable lands in `build\bin`. The build needs **no cgo**: neither a C
+compiler nor extra DLLs — the tunnel, the proxy and the settings are pure Go.
 
-Версия Wails — **v2.16.0**, последняя, которой достаточно Go 1.25. Начиная с
-v2.17 библиотека требует Go 1.26 и тянет скачивание второго тулчейна. Сборка
-идёт без cgo: ни компилятора C, ни внешних DLL не нужно.
-
-Старый Win32-интерфейс собирается как раньше и никуда не делся:
+Checks before a commit:
 
 ```cmd
-build.cmd
-```
-
-Скрипт прогоняет `go vet`, тесты и собирает exe с флагом `-H=windowsgui`.
-Флаг обязателен: без него Go линкует консольную подсистему, и рядом с окном
-приложения открывается пустая чёрная консоль. Вся диагностика идёт в панель
-логов, консоль не нужна.
-
-То же самое делает `build.ps1`, но `build.cmd` надёжнее: политика выполнения
-PowerShell по умолчанию блокирует неподписанные `.ps1`, а `.cmd` — нет.
-Если хочешь пользоваться `.ps1`, разреши один раз:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-Вручную (Win32-вариант):
-
-```
-go build -trimpath -ldflags "-s -w -H=windowsgui" -o MC-Tunnel.exe ./cmd/mctunnel
 go vet ./...
 go test ./...
 ```
 
-Туннель, прокси и настройки собираются без cgo и без внешних зависимостей;
-cgo не нужен и для Wails-сборки.
+The old Win32 interface (`cmd/mctunnel`, `internal/ui`) is still in the tree and
+builds through `build.cmd`, in case the behaviour needs comparing.
 
-## Что уже исправлено по сравнению с первой версией
+## Limitations
 
-- `Stop` закрывает и слушающие сокеты, **и** живые сессии — раньше трафик
-  продолжал идти после «остановлено».
-- `Start` держит блокировку целиком: двойной клик больше не открывает второй
-  listener и не выдаёт ложную ошибку «address already in use».
-- Ошибки больше не затирают статус: они уходят в журнал, статус показывает
-  только реальное состояние.
-- Слушаются оба loopback-адреса, поэтому `localhost` в игре работает
-  независимо от того, IPv4 или IPv6 выберет клиент.
-- Порт прослушивания настраивается, а сервер можно вводить без порта.
-- Если первые байты — не хендшейк Minecraft, трафик проходит байт в байт.
-  Старый legacy-ping (`0xFE`) больше не съедается.
-- Сессия, у которой игра уже отвалилась, а сервер молчит, закрывается по
-  таймауту (15 с), а не висит вечно в «активных».
-- `runtime.LockOSThread` для цикла сообщений: окно не может «уехать» на другой
-  поток.
+- Windows x64 and Minecraft **Java** only. Bedrock/UDP is deliberately out of
+  scope.
+- No SRV: if the server lives behind a `_minecraft._tcp` record, the port has to
+  be found by hand. The Minecraft client does that for you, the tunnel does not.
+- The window has a fixed size (960×440) and does not maximise: the layout is
+  built for exactly that.
+- On Windows 10 the corners are rounded by clipping the window to a region, so
+  the edge is stepped; on Windows 11 the compositor does it smoothly.
+- WebView2 is required: present on Windows 11, usually installed with Edge on
+  Windows 10.
 
-## Ограничения
+## License
 
-- Windows x64, только Minecraft Java Edition.
-- Нет SRV: если сервер живёт по `_minecraft._tcp` записи, порт нужно узнать
-  самому и вписать явно.
-- Пароль прокси привязан к учётной записи Windows: конфиг не переносится
-  между машинами целиком.
-- Окно фиксированного размера: 960×440, тянется мышью только за шапку,
-  развернуть на весь экран нельзя — вёрстка рассчитана ровно на этот размер.
-- Скругление углов на Windows 10 идёт через регион окна, поэтому кромка
-  углов ступенчатая; на Windows 11 окно скругляет композитор, там кромка
-  гладкая.
-- Для сборки интерфейса нужен WebView2: он есть в Windows 11 и почти везде
-  в Windows 10 (приходит с Edge), но на «чистой» системе его придётся
-  поставить.
-
-## Ветки и релизы
-
-- `main` — только релизы. Сюда попадает проверенное состояние, каждый релиз
-  помечается тегом `vX.Y.Z`.
-- `develop` — основная ветка разработки, всё новое начинается здесь. Название
-  именно такое: git не позволяет держать ветку `dev` и ветки `dev/<тема>`
-  одновременно, потому что `refs/heads/dev` — это файл, а `refs/heads/dev/gui`
-  требует одноимённого каталога.
-- `dev/<тема>` — тематические ветки под отдельную работу, например `dev/gui`
-  для интерфейса, `dev/settings` для сохранения настроек. Вливаются в
-  `develop`.
-- Релиз: `main` принимает `--no-ff` мерж из `develop`, ставится тег `vX.Y.Z`.
-
-```powershell
-git switch develop
-git switch -c dev/settings     # новая тема
-# ... работа, коммиты ...
-git switch develop && git merge --no-ff dev/settings
-
-# релиз
-git switch main
-git merge --no-ff develop
-git tag -a v0.2.0 -m "Settings are saved between runs"
-```
-
-## Планы
-
-- **Свой бинарный формат конфига (`.mct`)** — отложено сознательно. Сейчас
-  JSON: его видно глазами, он терпит новые поля и падает громко. Своему
-  бинарнику нужен свой парсер с проверками длин, своя история миграций и
-  молчаливые поломки — ради файла на 250 байт, который читается один раз за
-  запуск. Возвращаться к этому стоит, если в конфиге появится что-то, что JSON
-  держит плохо (большая история, бинарные данные), или если понадобится
-  запечатать файл целиком. Подробнее — `TODO(long-term)` в
-  `internal/settings/settings.go`.
-- Настройки на несколько профилей (несколько серверов и прокси с переключением).
-- **Иконка и манифест** — сделано в Wails-сборке: своя иконка куба во всех
-  размерах, манифест объявляет `permonitorv2`, поэтому на масштабе 125/150 %
-  окно остаётся резким. В старом Win32-бинарнике манифеста по-прежнему нет.
-- **Собрать с `-buildvcs=false` и сравнить** — этот короткий флаг запрещает Go
-  зашивать в бинарник сведения из git (по умолчанию `-buildvcs` включён, если
-  рядом лежит `.git`). На `dev/gui` уже проверено, что он даёт: с флагом
-  `go version -m` показывает `mod mctunnel (devel)`, без него —
-  `mctunnel v0.1.1-0.20261123164228-80bf81f74cc9`, то есть хеш коммита, по
-  которому сборку видно с точностью до ревизии. Осталось: собрать такой exe
-  отдельно (в Wails-сборке флаг передаётся через `GOFLAGS=-buildvcs=false`,
-  своего ключа у CLI нет), убедиться, что хеш больше не находится, и записать
-  вывод в README. Имена функций и путей из `pclntab` флаг не трогает: их кладёт
-  тулчейн, а не VCS.
-
+[MIT](LICENSE) © 2026 zzisler
