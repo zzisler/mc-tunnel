@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows%20x64-0078D6?logo=windows&logoColor=white">
+  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows%20x64%20%7C%20ARM64-0078D6?logo=windows&logoColor=white">
   <img alt="Go" src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white">
   <img alt="UI" src="https://img.shields.io/badge/UI-Wails%20%2B%20WebView2-DF0000">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-3fb950">
@@ -127,14 +127,14 @@ The old Win32 interface (`cmd/mctunnel`, `internal/ui`) is still in the tree and
 builds through `build.cmd`, in case the behaviour needs comparing.
 
 Releases are built by GitHub Actions: pushing a `vX.Y.Z` tag runs the tests,
-builds the executable on a clean Windows runner, stamps that version into the
-resource and attaches the file plus its SHA-256 to the GitHub release. Nothing
-has to be built by hand for a release.
+builds **x64 and ARM64** executables on a clean Windows runner, stamps that
+version into the resource and attaches both files plus their SHA-256 to the
+GitHub release. Nothing has to be built by hand for a release.
 
 ## Limitations
 
-- Windows x64 and Minecraft **Java** only. Bedrock/UDP is deliberately out of
-  scope.
+- Windows (x64 and ARM64) and Minecraft **Java** only. Bedrock/UDP is
+  deliberately out of scope; Linux and macOS are not supported.
 - No SRV: if the server lives behind a `_minecraft._tcp` record, the port has to
   be found by hand. The Minecraft client does that for you, the tunnel does not.
 - The window has a fixed size (960×440) and does not maximise: the layout is

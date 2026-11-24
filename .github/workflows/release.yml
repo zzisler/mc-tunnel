@@ -49,25 +49,26 @@ jobs:
 
           "Building $version (fixed $four) from $env:GITHUB_REF_NAME"
 
-      - name: Build
-        run: wails build -s -m
-
-      - name: Name the artifact and hash it
+      - name: Build both architectures
         shell: pwsh
         run: |
-          $name = "MC-Tunnel-$env:GITHUB_REF_NAME.exe"
-          Copy-Item build/bin/MC-Tunnel.exe $name
-          $hash = (Get-FileHash $name -Algorithm SHA256).Hash.ToLower()
-          "$hash  $name" | Set-Content "$name.sha256" -Encoding utf8
-          Get-ChildItem $name, "$name.sha256" | Select-Object Name, Length
+          foreach ($arch in "amd64", "arm64") {
+            wails build -platform "windows/$arch" -s -m
+            if ($LASTEXITCODE -ne 0) { throw "build failed for $arch" }
+
+            $name = "MC-Tunnel-$env:GITHUB_REF_NAME-windows-$arch.exe"
+            Copy-Item build/bin/MC-Tunnel.exe $name
+            $hash = (Get-FileHash $name -Algorithm SHA256).Hash.ToLower()
+            "$hash  $name" | Set-Content "$name.sha256" -Encoding utf8
+            Get-ChildItem $name, "$name.sha256" | Select-Object Name, Length
+          }
 
       - name: Publish the release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create $env:GITHUB_REF_NAME `
-            "MC-Tunnel-$env:GITHUB_REF_NAME.exe" `
-            "MC-Tunnel-$env:GITHUB_REF_NAME.exe.sha256" `
+          $files = Get-ChildItem "MC-Tunnel-$env:GITHUB_REF_NAME-windows-*" | ForEach-Object { $_.Name }
+          gh release create $env:GITHUB_REF_NAME @files `
             --title "MC Tunnel $env:GITHUB_REF_NAME" `
             --notes-from-tag
