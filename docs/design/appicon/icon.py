@@ -81,6 +81,14 @@ def main():
     write_ico(out, images)
     print(f"wrote {out}")
 
+    # Wails regenerates build/windows/icon.ico from build/appicon.png when the
+    # PNG is present, so the master is kept at 1024px and rendered from the
+    # same polygons instead of upscaling a 256px frame.
+    if len(sys.argv) > 2:
+        master = sys.argv[2]
+        render(1024).save(master)
+        print(f"wrote {master}")
+
 
 if __name__ == "__main__":
     main()
