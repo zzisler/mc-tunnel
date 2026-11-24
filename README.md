@@ -126,6 +126,11 @@ go test ./...
 The old Win32 interface (`cmd/mctunnel`, `internal/ui`) is still in the tree and
 builds through `build.cmd`, in case the behaviour needs comparing.
 
+Releases are built by GitHub Actions: pushing a `vX.Y.Z` tag runs the tests,
+builds the executable on a clean Windows runner, stamps that version into the
+resource and attaches the file plus its SHA-256 to the GitHub release. Nothing
+has to be built by hand for a release.
+
 ## Limitations
 
 - Windows x64 and Minecraft **Java** only. Bedrock/UDP is deliberately out of

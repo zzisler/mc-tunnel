@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Install the Wails CLI
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Stamp the tag version into the build
+        shell: pwsh
+        run: |
+          $version = "$env:GITHUB_REF_NAME".TrimStart("v")
+          $four = if ($version -match "^\d+\.\d+\.\d+\.\d+$") { $version } else { "$version.0" }
+
+          $wails = Get-Content wails.json -Raw | ConvertFrom-Json
+          $wails.info.productVersion = $version
+          $wails | ConvertTo-Json -Depth 8 | Set-Content wails.json -Encoding utf8
+
+          $info = Get-Content build/windows/info.json -Raw | ConvertFrom-Json
+          $info.fixed.file_version = $four
+          $info.fixed.product_version = $four
+          $info | ConvertTo-Json -Depth 8 | Set-Content build/windows/info.json -Encoding utf8
+
+          "Building $version (fixed $four) from $env:GITHUB_REF_NAME"
+
+      - name: Build
+        run: wails build -s -m
+
+      - name: Name the artifact and hash it
+        shell: pwsh
+        run: |
+          $name = "MC-Tunnel-$env:GITHUB_REF_NAME.exe"
+          Copy-Item build/bin/MC-Tunnel.exe $name
+          $hash = (Get-FileHash $name -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name" | Set-Content "$name.sha256" -Encoding utf8
+          Get-ChildItem $name, "$name.sha256" | Select-Object Name, Length
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            "MC-Tunnel-$env:GITHUB_REF_NAME.exe" `
+            "MC-Tunnel-$env:GITHUB_REF_NAME.exe.sha256" `
+            --title "MC Tunnel $env:GITHUB_REF_NAME" `
+            --notes-from-tag
